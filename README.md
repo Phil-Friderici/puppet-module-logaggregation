@@ -10,9 +10,9 @@ Puppet module to manage client packages for EIS Log aggregation
 
 package_name
 ------------
-List of packages to manage.
+String or Array of packages to manage.
 
-- *Default*: 'EISlogging'
+- *Default*: '[ 'EISlogging', 'EISloggingNFS', ]'
 
 package_ensure
 --------------

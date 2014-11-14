@@ -7,10 +7,13 @@ describe 'logaggregation' do
     it { should contain_class('logaggregation') }
 
     it {
-      should contain_package('EISlogging').with({
-        'ensure' => 'installed',
-      })
+      should contain_package('EISloggingNFS').with_ensure('installed')
     }
+
+    it {
+      should contain_package('EISlogging').with_ensure('installed')
+    }
+
   end
   context 'with package_name set' do
 
