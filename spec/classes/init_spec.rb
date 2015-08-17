@@ -1,42 +1,87 @@
 require 'spec_helper'
 describe 'logaggregation' do
+  let(:facts) { {:osfamily => 'RedHat'} }
 
-  context 'with defaults for all parameters' do
-    it { should compile.with_all_deps }
-    it { should contain_class('logaggregation') }
-    it { should contain_package('EISlogging').with_ensure('installed') }
-    it { should contain_package('EISloggingNFS').with_ensure('installed') }
+  platforms = {
+    'Debian' =>
+      { :osfamily                   => 'Debian',
+        :package_name_default       => [ 'eislogging', 'eisloggingnfs', ],
+      },
+    'RedHat' =>
+      { :osfamily                   => 'RedHat',
+        :package_name_default       => [ 'EISlogging', 'EISloggingNFS', ],
+      },
+    'Suse' =>
+      { :osfamily                   => 'Suse',
+        :package_name_default       => [ 'EISlogging', 'EISloggingNFS', ],
+      },
+  }
 
-    it { should_not contain_class('rsyslog') }
-    it { should have_rsyslog__fragment_resource_count(0) }
+  context 'with default values for all parameters' do
+    platforms.sort.each do |k,v|
+      context "where osfamily is valid <#{v[:osfamily]}>" do
+        let(:facts) { {:osfamily => v[:osfamily] } }
 
-  end
+        it { should compile.with_all_deps }
+        it { should contain_class('logaggregation') }
+        it { should_not contain_class('rsyslog') }
+        it { should have_rsyslog__fragment_resource_count(0) }
 
-  context 'with package_name set to an valid array' do
-    let(:params) { { :package_name => ['foo','bar'] } }
+        v[:package_name_default].each do |package|
+          it { should contain_package(package).with_ensure('installed') }
+        end
 
-    it { should compile.with_all_deps }
-    it { should contain_class('logaggregation') }
-    it { should contain_package('foo').with_ensure('installed') }
-    it { should contain_package('bar').with_ensure('installed') }
-  end
+      end # where osfamily is valid <#{v[:osfamily]}
+    end # platforms.sort.each
 
-  context 'with package_name set to an valid string' do
-    let(:params) { { :package_name => 'foobar' } }
+    context "where osfamily is unsupported <UnknownOS>" do
+      let(:facts) { {:osfamily => 'UnknownOS' } }
 
-    it { should compile.with_all_deps }
-    it { should contain_class('logaggregation') }
-    it { should contain_package('foobar').with_ensure('installed') }
-  end
+      it 'should fail' do
+        expect {
+          should contain_class('logaggregation')
+        }.to raise_error(Puppet::Error,/logaggregation support package management on osfamilies .*\. Please set logaggregation::manage_packages to <false> for <UnknownOS> hosts\./)
+      end
 
-  context 'with package_ensure set to <absent>' do
-    let(:params) { { :package_ensure => 'absent' } }
+    end # where osfamily is invalid <UnknownOS>
+  end # with default values for all parameters
 
-    it { should compile.with_all_deps }
-    it { should contain_class('logaggregation') }
-    it { should contain_package('EISlogging').with_ensure('absent') }
-    it { should contain_package('EISloggingNFS').with_ensure('absent') }
-  end
+  context 'manage_packages functionality' do
+    context 'with manage_packages set to valid <false>' do
+      let(:params) { {:manage_packages => false } }
+
+      it { should compile.with_all_deps }
+      it { should contain_class('logaggregation') }
+      it { should_not contain_package('EISlogging') }
+      it { should_not contain_package('EISloggingNFS') }
+    end
+
+    context 'with package_name set to a valid array' do
+      let(:params) { { :package_name => ['foo','bar'] } }
+
+      it { should compile.with_all_deps }
+      it { should contain_class('logaggregation') }
+      it { should contain_package('foo').with_ensure('installed') }
+      it { should contain_package('bar').with_ensure('installed') }
+    end
+
+    context 'with package_name set to a valid string' do
+      let(:params) { { :package_name => 'foobar' } }
+
+      it { should compile.with_all_deps }
+      it { should contain_class('logaggregation') }
+      it { should contain_package('foobar').with_ensure('installed') }
+    end
+
+    context 'with package_ensure set to <absent>' do
+      let(:params) { { :package_ensure => 'absent' } }
+
+      it { should compile.with_all_deps }
+      it { should contain_class('logaggregation') }
+      it { should contain_package('EISlogging').with_ensure('absent') }
+      it { should contain_package('EISloggingNFS').with_ensure('absent') }
+    end
+  end # manage_packages functionality
 
   describe 'rsyslog functionality' do
     let(:default_rsyslog_facts) { {
@@ -157,7 +202,7 @@ describe 'logaggregation' do
         :message => 'Expected.*to be an Integer',
       },
       'boolean' => {
-        :name    => ['manage_rsyslog_fragment'],
+        :name    => ['manage_packages','manage_rsyslog_fragment'],
         :invalid => ['invalid',3,2.42,['array'],a={'ha'=>'sh'}],
         :message => 'is not a boolean',
       },

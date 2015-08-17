@@ -3,9 +3,10 @@
 # Module to manage the EIS Log Aggregation client
 #
 class logaggregation(
+  $manage_packages           = true,
   $manage_rsyslog_fragment   = false,
   $package_ensure            = 'installed',
-  $package_name              = [ 'EISlogging', 'EISloggingNFS', ],
+  $package_name              = 'USE_DEFAULTS',
   $rsyslog_fragment_epilogue = undef,
   $rsyslog_fragment_file     = 'logaggregation',
   $rsyslog_fragment_preamble = undef,
@@ -15,14 +16,39 @@ class logaggregation(
 ) {
 
   # variable type validation
+  validate_bool($manage_packages)
   validate_bool($manage_rsyslog_fragment)
 
-  package { $package_name:
-    ensure => $package_ensure,
+  if $manage_packages == true {
+    case $::osfamily {
+      'Debian': {
+        $package_name_default = [ 'eislogging', 'eisloggingnfs', ]
+      }
+      'RedHat': {
+        $package_name_default = [ 'EISlogging', 'EISloggingNFS', ]
+      }
+      'Suse': {
+        $package_name_default = [ 'EISlogging', 'EISloggingNFS', ]
+      }
+      default: {
+        fail("logaggregation support package management on osfamilies Debian, RedHat and Suse. Please set logaggregation::manage_packages to <false> for <${::osfamily}> hosts.")
+      }
+    }
+
+    if $package_name == 'USE_DEFAULTS' {
+      $package_name_real = $package_name_default
+    } else {
+      $package_name_real = any2array($package_name)
+    }
+
+    validate_array($package_name_real)
+
+    package { $package_name_real:
+      ensure => $package_ensure,
+    }
   }
 
   if $manage_rsyslog_fragment == true {
-
     include rsyslog
 
     # variable type validation
@@ -46,6 +72,6 @@ class logaggregation(
     $_rsyslog_fragment_hash    = { 'content' => $_rsyslog_fragment_content }
 
     create_resources('rsyslog::fragment', { "${rsyslog_fragment_file}" => $_rsyslog_fragment_hash } )
-
   }
+
 }
