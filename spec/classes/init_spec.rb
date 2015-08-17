@@ -1,63 +1,115 @@
 require 'spec_helper'
 describe 'logaggregation' do
 
-  context 'with defaults for all parameters' do
+  let(:facts) { {:osfamily => 'RedHat'} }
+
+  platforms = {
+    'Debian' =>
+      { :osfamily                   => 'Debian',
+        :package_name_default       => [ 'eislogging', 'eisloggingnfs', ],
+      },
+    'RedHat' =>
+      { :osfamily                   => 'RedHat',
+        :package_name_default       => [ 'EISlogging', 'EISloggingNFS', ],
+      },
+    'Suse' =>
+      { :osfamily                   => 'Suse',
+        :package_name_default       => [ 'EISlogging', 'EISloggingNFS', ],
+      },
+  }
+
+  context 'with default values for all parameters' do
+    platforms.sort.each do |k,v|
+      context "where osfamily is valid <#{v[:osfamily]}>" do
+        let(:facts) { {:osfamily => v[:osfamily] } }
+
+        it { should compile.with_all_deps }
+        it { should contain_class('logaggregation') }
+
+        v[:package_name_default].each do |package|
+          it { should contain_package(package).with_ensure('installed') }
+        end
+
+      end # where osfamily is valid <#{v[:osfamily]}
+    end # platforms.sort.each
+
+    context "where osfamily is unsupported <UnknownOS>" do
+      let(:facts) { {:osfamily => 'UnknownOS' } }
+
+      it 'should fail' do
+        expect {
+          should contain_class('logaggregation')
+        }.to raise_error(Puppet::Error,/logaggregation support package management on osfamilies .*\. Please set logaggregation::manage_packages to <false> for <UnknownOS> hosts\./)
+      end
+
+    end # where osfamily is invalid <UnknownOS>
+  end # with default values for all parameters
+
+  context 'with manage_packages set to valid <false>' do
+    let(:params) { {:manage_packages => false } }
 
     it { should compile.with_all_deps }
     it { should contain_class('logaggregation') }
-
-    it {
-      should contain_package('EISlogging').with_ensure('installed')
-    }
-
-    it {
-      should contain_package('EISloggingNFS').with_ensure('installed')
-    }
+    it { should_not contain_package('EISlogging') }
+    it { should_not contain_package('EISloggingNFS') }
   end
 
-  context 'with package_name set to an valid array' do
-
-    let(:params) { {:package_name => ['foo','bar']} }
+  context 'with package_name set to a valid array' do
+    let(:params) { { :package_name => ['foo','bar'] } }
 
     it { should compile.with_all_deps }
     it { should contain_class('logaggregation') }
-
-    it {
-      should contain_package('foo').with_ensure('installed')
-    }
-
-    it {
-      should contain_package('bar').with_ensure('installed')
-    }
+    it { should contain_package('foo').with_ensure('installed') }
+    it { should contain_package('bar').with_ensure('installed') }
   end
 
-  context 'with package_name set to an valid string' do
-
-    let(:params) { {:package_name => 'foobar'} }
+  context 'with package_name set to a valid string' do
+    let(:params) { { :package_name => 'foobar' } }
 
     it { should compile.with_all_deps }
     it { should contain_class('logaggregation') }
-
-    it {
-      should contain_package('foobar').with_ensure('installed')
-    }
-
+    it { should contain_package('foobar').with_ensure('installed') }
   end
 
   context 'with package_ensure set to <absent>' do
-
-    let(:params) { {:package_ensure => 'absent'} }
+    let(:params) { { :package_ensure => 'absent' } }
 
     it { should compile.with_all_deps }
     it { should contain_class('logaggregation') }
-
-    it {
-      should contain_package('EISlogging').with_ensure('absent')
-    }
-
-    it {
-      should contain_package('EISloggingNFS').with_ensure('absent')
-    }
+    it { should contain_package('EISlogging').with_ensure('absent') }
+    it { should contain_package('EISloggingNFS').with_ensure('absent') }
   end
+
+  describe 'validation of invalid variable type handling' do
+    # set needed custom facts and variables
+    let(:facts) { {
+      :osfamily          => 'RedHat',
+    } }
+    let(:validation_params) { {
+    } }
+
+    validations = {
+      'boolean' => {
+        :name    => ['manage_packages'],
+        :invalid => ['invalid',3,2.42,['array'],a={'ha'=>'sh'}],
+        :message => 'is not a boolean',
+      },
+    }
+
+    validations.sort.each do |type,var|
+      var[:name].each do |var_name|
+        var[:invalid].each do |invalid|
+          context "with #{var_name} (#{type}) set to invalid #{invalid} (as #{invalid.class})" do
+            let(:params) { validation_params.merge({:"#{var_name}" => invalid, }) }
+            it 'should fail' do
+              expect {
+                should contain_class(subject)
+              }.to raise_error(Puppet::Error,/#{var[:message]}/)
+            end
+          end # with #{var_name}
+        end # var[:fail_on].each
+      end # var[:name].each
+    end # validations.sort.each
+  end # validation of invalid variable types
 
 end
