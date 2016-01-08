@@ -1,6 +1,6 @@
 {
   "name": "jwennerberg-logaggregation",
-  "version": "v0.1.2",
+  "version": "v0.2.0",
   "author": "jwennerberg",
   "summary": "manage client for EIS Log aggregation",
   "license": "Apache-2.0",
