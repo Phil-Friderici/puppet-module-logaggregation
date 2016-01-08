@@ -86,7 +86,7 @@ describe 'logaggregation' do
   describe 'rsyslog functionality' do
     let(:default_rsyslog_facts) { {
       :osfamily                => 'RedHat',
-      :lsbmajdistrelease       => '6',
+      :operatingsystemrelease  => '6',
     } }
 
     let(:default_rsyslog_params) { {
@@ -181,10 +181,10 @@ describe 'logaggregation' do
     # set needed custom facts and variables
     let(:facts) do
       {
-        :kernel            => 'Linux',
-        :osfamily          => 'RedHat',
-        :lsbmajdistrelease => '6',
-        :rsyslog_version   => '5.8.10',
+        :kernel                 => 'Linux',
+        :osfamily               => 'RedHat',
+        :operatingsystemrelease => '6',
+        :rsyslog_version        => '5.8.10',
       }
     end
     let(:validation_params) do
