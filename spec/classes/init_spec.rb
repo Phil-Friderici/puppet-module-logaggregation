@@ -195,9 +195,9 @@ describe 'logaggregation' do
     end
 
     validations = {
-      'boolean' => {
+      'boolean_stringified' => {
         :name    => %w(manage_packages manage_rsyslog_fragment),
-        :valid   => [true, false],
+        :valid   => [true, false, 'true', 'false'],
         :invalid => ['string',%w(array), { 'ha' => 'sh' }, 3, 2.42],
         :message => '(Unknown type of boolean|Requires either string to work with)',
       },

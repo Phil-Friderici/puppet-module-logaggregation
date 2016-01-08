@@ -15,11 +15,24 @@ class logaggregation(
   $rsyslog_selector          = '*.*',
 ) {
 
-  # variable type validation
-  validate_bool($manage_packages)
-  validate_bool($manage_rsyslog_fragment)
+  # stringified bool handling
+  if is_bool($manage_packages) == true {
+    $manage_packages_bool = $manage_packages
+  } else {
+    $manage_packages_bool = str2bool($manage_packages)
+  }
 
-  if $manage_packages == true {
+  if is_bool($manage_rsyslog_fragment) == true {
+    $manage_rsyslog_fragment_bool = $manage_rsyslog_fragment
+  } else {
+    $manage_rsyslog_fragment_bool = str2bool($manage_rsyslog_fragment)
+  }
+
+  # variable type validation
+  validate_bool($manage_packages_bool)
+  validate_bool($manage_rsyslog_fragment_bool)
+
+  if $manage_packages_bool == true {
     case $::osfamily {
       'Debian': {
         $package_name_default = [ 'eislogging', 'eisloggingnfs', ]
@@ -48,7 +61,7 @@ class logaggregation(
     }
   }
 
-  if $manage_rsyslog_fragment == true {
+  if $manage_rsyslog_fragment_bool == true {
     include rsyslog
 
     # variable type validation
