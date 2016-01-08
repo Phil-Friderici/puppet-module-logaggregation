@@ -179,54 +179,66 @@ describe 'logaggregation' do
 
   describe 'validation of invalid variable type handling' do
     # set needed custom facts and variables
-    let(:facts) { {
-      :kernel            => 'Linux',
-      :osfamily          => 'RedHat',
-      :lsbmajdistrelease => '6',
-      :rsyslog_version   => '5.8.10',
-    } }
-    let(:validation_params) { {
-      :rsyslog_insight_server  => 'localhost.example.net',
-      :manage_rsyslog_fragment => true,
-    } }
+    let(:facts) do
+      {
+        :kernel            => 'Linux',
+        :osfamily          => 'RedHat',
+        :lsbmajdistrelease => '6',
+        :rsyslog_version   => '5.8.10',
+      }
+    end
+    let(:validation_params) do
+      {
+        :rsyslog_insight_server  => 'localhost.example.net',
+        :manage_rsyslog_fragment => true,
+      }
+    end
 
     validations = {
-      'string' => {
-        :name    => ['rsyslog_fragment_epilogue','rsyslog_fragment_file','rsyslog_fragment_preamble','rsyslog_selector'],
-        :invalid => [3,2.42,['array'],a={'ha'=>'sh'}],
-        :message => 'is not a string',
-      },
-      'integer' => {
-        :name    => ['rsyslog_insight_port'],
-        :invalid => ['invalid',2.42,['array'],a={'ha'=>'sh'}],
-        :message => 'Expected.*to be an Integer',
-      },
       'boolean' => {
-        :name    => ['manage_packages','manage_rsyslog_fragment'],
-        :invalid => ['invalid',3,2.42,['array'],a={'ha'=>'sh'}],
-        :message => 'is not a boolean',
+        :name    => %w(manage_packages manage_rsyslog_fragment),
+        :valid   => [true, false],
+        :invalid => ['string',%w(array), { 'ha' => 'sh' }, 3, 2.42],
+        :message => '(Unknown type of boolean|Requires either string to work with)',
       },
       'domain_name' => {
-        :name    => ['rsyslog_insight_server'],
-        :invalid => ['invalid,net',2.42,['array'],a={'ha'=>'sh'}],
+        :name    => %w(rsyslog_insight_server),
+        :valid   => %w(valid.domain.local),
+        :invalid => ['invalid,net', %w(array), { 'ha' => 'sh' }, 2.42 ],
         :message => 'is not a domain name',
+      },
+      'integer' => {
+        :name    => %w(rsyslog_insight_port),
+        :valid   => [3],
+        :invalid => ['string',%w(array), { 'ha' => 'sh' }, 2.42],
+        :message => 'Expected.*to be an Integer',
+      },
+      'string' => {
+        :name    => %w(rsyslog_fragment_epilogue rsyslog_fragment_file rsyslog_fragment_preamble rsyslog_selector),
+        :valid   => %w(string),
+        :invalid => [%w(array), { 'ha' => 'sh' }, 3, 2.42],
+        :message => 'is not a string',
       },
     }
 
-    validations.sort.each do |type,var|
+    validations.sort.each do |type, var|
       var[:name].each do |var_name|
+        var[:valid].each do |valid|
+          context "with #{var_name} (#{type}) set to valid #{valid} (as #{valid.class})" do
+            let(:params) { validation_params.merge({ :"#{var_name}" => valid, }) }
+            it { should compile }
+          end
+        end
+
         var[:invalid].each do |invalid|
           context "with #{var_name} (#{type}) set to invalid #{invalid} (as #{invalid.class})" do
-            let(:params) { validation_params.merge({:"#{var_name}" => invalid, }) }
+            let(:params) { validation_params.merge({ :"#{var_name}" => invalid, }) }
             it 'should fail' do
-              expect {
-                should contain_class(subject)
-              }.to raise_error(Puppet::Error,/#{var[:message]}/)
+              expect { should contain_class(subject) }.to raise_error(Puppet::Error, /#{var[:message]}/)
             end
-          end # with #{var_name}
-        end # var[:fail_on].each
+          end
+        end
       end # var[:name].each
     end # validations.sort.each
-  end # validation of invalid variable types
-
+  end # describe 'variable type and content validations'
 end
